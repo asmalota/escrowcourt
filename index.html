@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>EscrowCourt — Escrowed Disputes Ruled On-chain</title>
+<style>
+  :root{
+    --bg:#0e0c14; --card:#171326; --line:#332a52; --ink:#f0ecff; --dim:#a79fc4;
+    --acc:#c084fc; --acc2:#fbbf24; --good:#4ade80; --bad:#fb7185; --warn:#fbbf24;
+    --mono:ui-monospace,"Cascadia Code",Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:
+     radial-gradient(1000px 500px at 10% -10%, #2a1d4a 0%, transparent 60%),
+     radial-gradient(900px 460px at 92% 0%, #3a2a12 0%, transparent 58%),
+     var(--bg);
+     color:var(--ink);font:15px/1.55 ui-sans-serif,system-ui,"Segoe UI",Roboto,sans-serif;min-height:100vh}
+  header{display:flex;align-items:center;gap:14px;padding:16px 24px;border-bottom:1px solid var(--line);
+    background:rgba(14,12,20,.85);backdrop-filter:blur(9px);position:sticky;top:0;z-index:20;flex-wrap:wrap}
+  .logo{width:32px;height:32px;border-radius:9px;flex:0 0 auto;
+    background:linear-gradient(135deg,var(--acc),#5b21b6 60%,var(--acc2));
+    box-shadow:0 0 0 1px #4c1d95 inset,0 6px 16px -6px var(--acc)}
+  h1{font-size:17px;margin:0;font-weight:650;letter-spacing:.2px}
+  .sub{font-size:11.5px;color:var(--dim);letter-spacing:.06em}
+  .spacer{flex:1}
+  #netDot{width:8px;height:8px;border-radius:50%;background:#4b4560;display:inline-block;margin-right:7px;vertical-align:middle}
+  #netDot.on{background:var(--good);box-shadow:0 0 9px var(--good)}
+  button{font:inherit;cursor:pointer;border-radius:9px;border:1px solid var(--line);
+    background:#221b36;color:var(--ink);padding:8px 14px;transition:.15s}
+  button:hover:not(:disabled){border-color:var(--acc);color:var(--acc)}
+  button:disabled{opacity:.4;cursor:not-allowed}
+  button.primary{background:linear-gradient(180deg,#5b21b6,#3b1683);border-color:#7c3aed;font-weight:600}
+  button.primary:hover:not(:disabled){border-color:var(--acc);box-shadow:0 0 0 1px var(--acc) inset}
+  button.warn{border-color:#6b5217;color:var(--acc2)}
+  main{max-width:1150px;margin:0 auto;padding:24px 20px 70px}
+  .hero{padding:4px 0 20px}
+  .hero h2{margin:0 0 8px;font-size:25px;line-height:1.22;letter-spacing:-.3px}
+  .hero p{color:var(--dim);margin:0;max-width:830px}
+  .tag{display:inline-block;font:11px/1 var(--mono);letter-spacing:.1em;color:var(--acc);
+    border:1px solid #4c1d95;background:#1c1430;padding:6px 9px;border-radius:999px;
+    margin-bottom:12px;text-transform:uppercase}
+  .grid{display:grid;grid-template-columns:1.1fr .9fr;gap:16px}
+  @media(max-width:940px){.grid{grid-template-columns:1fr}}
+  .card{background:linear-gradient(180deg,var(--card),#120f1e);border:1px solid var(--line);
+    border-radius:14px;padding:16px 17px;margin-bottom:16px}
+  .card h3{margin:0 0 4px;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--acc);font-weight:700}
+  .card h3 span{color:var(--dim);text-transform:none;letter-spacing:0;font-weight:400;font-size:11.5px;margin-left:6px}
+  .card h4{margin:13px 0 3px;font-size:14px;font-weight:600}
+  .hint{font-size:12px;color:var(--dim);margin:0 0 9px}
+  label{display:block;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);margin:8px 0 4px}
+  input,textarea,select{width:100%;font:inherit;font-family:var(--mono);font-size:13px;background:#0d0b16;
+    color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:9px 11px}
+  input:focus,textarea:focus{outline:none;border-color:var(--acc);box-shadow:0 0 0 3px #2a1d4a}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .btnrow{display:flex;gap:8px;margin-top:11px;flex-wrap:wrap}
+  .msg{font-size:12.5px;margin-top:9px;min-height:16px;font-family:var(--mono);word-break:break-word;line-height:1.45}
+  .msg.err{color:var(--bad)} .msg.ok{color:var(--good)} .msg.info{color:var(--dim)}
+  #list{display:flex;flex-direction:column;gap:8px;max-height:380px;overflow:auto}
+  .item{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:10px 12px;
+    border:1px solid var(--line);border-radius:10px;background:#151128;cursor:pointer;transition:.14s}
+  .item:hover{border-color:var(--acc);background:#1c1634}
+  .item.sel{border-color:var(--acc);box-shadow:0 0 0 1px var(--acc) inset}
+  .badge{font:10.5px/1 var(--mono);letter-spacing:.07em;padding:5px 8px;border-radius:999px;white-space:nowrap;border:1px solid transparent}
+  .b0{background:#2a1f4a;color:#c9b6f5;border-color:#4c3577}
+  .b1{background:#123a2c;color:#5ff2b6;border-color:#1c6b4c}
+  .b2{background:#1b2f4a;color:#8fd8ff;border-color:#2f5c8a}
+  .b3{background:#3a1f33;color:#ff9bc9;border-color:#6d3255}
+  .kv{display:grid;grid-template-columns:auto 1fr;gap:5px 14px;font-family:var(--mono);font-size:12.5px;margin-top:8px}
+  .kv b{color:var(--dim);font-weight:500;letter-spacing:.04em}
+  code{font-family:var(--mono);font-size:12.5px;background:#120f1e;border:1px solid var(--line);
+    padding:1px 6px;border-radius:5px;color:var(--acc)}
+  ol{margin:8px 0 0;padding-left:20px;color:var(--dim);font-size:13px}
+  ol li{margin-bottom:7px}
+  ol b{color:var(--ink);font-weight:600}
+  footer{border-top:1px solid var(--line);padding:15px 24px;color:var(--dim);font-size:12px;
+    display:flex;gap:16px;flex-wrap:wrap;align-items:center}
+  a{color:var(--acc);text-decoration:none;border-bottom:1px dotted #6b4bb5}
+  a:hover{color:#e9d5ff}
+  .warnbox{border-left:3px solid var(--acc2);background:#241f0d;padding:10px 13px;
+    border-radius:0 8px 8px 0;font-size:12.5px;color:#e8d9a8;margin-top:10px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo"></div>
+  <div>
+    <h1>EscrowCourt</h1>
+    <div class="sub">ESCROWED DISPUTES, RULED ON-CHAIN · STUDIONET</div>
+  </div>
+  <div class="spacer"></div>
+  <div class="sub"><span id="netDot"></span><span id="netLabel">not connected</span></div>
+  <button id="connectBtn">Connect wallet</button>
+</header>
+
+<main>
+  <section class="hero">
+    <div class="tag">build 14-01-escrowcourt · chain 61999</div>
+    <h2>Money in escrow. Two sides. A jury that reads the evidence.</h2>
+    <p>
+      A buyer escrows real GEN into the contract when opening a dispute, so the amount is
+      custody rather than a number in a description. The named seller opts in; until they do,
+      the buyer can pull the escrow back. Both sides then file evidence URLs, and an on-chain
+      jury fetches those pages and rules how the escrow is released &mdash; full refund, full
+      payment, or a split. The contract pays out with a real transfer, and a second settle is
+      refused. The verdict is a pair &mdash; a winner and a share &mdash; and the two must
+      agree: <code>buyer</code> is exactly 100% to the buyer, <code>seller</code> is exactly
+      0%, and <code>split</code> must sit strictly between. Anything contradictory is refused
+      by the contract itself, and <code>check_verdict</code> exposes that rule so it can be
+      audited without running consensus.
+    </p>
+  </section>
+
+  <div class="grid">
+    <div>
+      <div class="card">
+        <h3>Disputes <span id="countLabel">· loading…</span></h3>
+        <div id="list"></div>
+      </div>
+
+      <div class="card">
+        <h3>Selected dispute</h3>
+        <div id="detail" class="hint">Pick a dispute above, or enter an id and press Open.</div>
+        <div class="row" style="margin-top:10px">
+          <div><label>Dispute id</label><input id="openId" value="1" inputmode="numeric" /></div>
+          <div style="display:flex;align-items:flex-end"><button id="openBtn">Open</button></div>
+        </div>
+        <div class="btnrow">
+          <button id="acceptBtn" disabled>accept_dispute</button>
+          <button id="judgeBtn" class="primary" disabled>request_ruling</button>
+          <button id="settleBtn" class="warn" disabled>settle</button>
+          <button id="refundBtn" class="warn" disabled>refund_if_unaccepted</button>
+          <button id="refreshBtn">Refresh</button>
+        </div>
+        <div id="detailMsg" class="msg"></div>
+      </div>
+
+      <div class="card">
+        <h3>File evidence <span>· either side · a URL and a description</span></h3>
+        <p class="hint">The jury fetches the URL you file. File nothing and you are judged on
+          the record as it stands, so an empty case loses on assertion alone.</p>
+        <label>Evidence URL</label>
+        <input id="evUrl" value="https://example.com/my-evidence" />
+        <label>What this shows</label>
+        <textarea id="evDesc" rows="3">I paid on time and the goods were never delivered; the tracking link returns 404.</textarea>
+        <div class="btnrow"><button id="evBtn" class="primary">submit_evidence</button></div>
+        <div id="evMsg" class="msg"></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <h3>Open a dispute <span>· the caller escrows the GEN</span></h3>
+        <p class="hint">The escrowed amount is the GEN you send with this call. It is held by
+          the contract, not recorded as a number.</p>
+        <label>Seller address</label>
+        <input id="sellerAddr" placeholder="0x… the counterparty" />
+        <label>What went wrong</label>
+        <textarea id="desc" rows="3">Buyer escrowed GEN for a labelled dataset; the seller accepted, confirmed a 48 hour window, and no dataset was transferred.</textarea>
+        <label>Escrow (GEN)</label>
+        <input id="escrow" value="0.5" />
+        <div class="btnrow"><button id="createBtn" class="primary">create_dispute</button></div>
+        <div id="createMsg" class="msg"></div>
+      </div>
+
+      <div class="card">
+        <h3>How it works</h3>
+        <ol>
+          <li><b>create_dispute</b> — payable. Your GEN is escrowed. Buyer and seller must differ.</li>
+          <li><b>accept_dispute</b> — seller only. Until they accept, <b>refund_if_unaccepted</b>
+            lets the buyer reclaim everything.</li>
+          <li><b>submit_evidence</b> — either party, a URL plus a description. The jury reads the
+            fetched pages, not the volume of text.</li>
+          <li><b>request_ruling</b> — the jury fetches every evidence URL and returns a winner and
+            a share. Each validator re-runs the jury and must reach the same outcome; a split that
+            drifts by more than 10 points is rejected.</li>
+          <li><b>settle</b> — pays the escrow out with a real transfer, once.</li>
+        </ol>
+        <div class="warnbox">
+          The verdict rule is public: <code>check_verdict(winner, split_percent, leader_winner,
+          leader_percent)</code> returns the same boolean consensus stops on. The contract also
+          refuses a malformed payload and a payload whose winner contradicts its own percentage.
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <span>EscrowCourt · Studionet (61999)</span>
+  <a id="explorerLink" href="#" target="_blank" rel="noopener">contract on the explorer</a>
+  <a href="https://github.com/asmalota/escrowcourt" target="_blank" rel="noopener">source</a>
+  <span id="addrLabel"></span>
+</footer>
+
+<script type="module">
+import { createClient } from "https://esm.sh/genlayer-js@1.1.8";
+import { studionet } from "https://esm.sh/genlayer-js@1.1.8/chains";
+
+// ------------------------------------------------------------------------ config
+const ADDR = "0xA9AA7c4Cb0f4D39563A049Cbe01dFF8F17cD68a7";
+const EXPLORER = "https://explorer-studio.genlayer.com/address/" + ADDR;
+const DSTATE = ["OPEN", "ACTIVE", "RULED", "SETTLED"];
+const $ = (id) => document.getElementById(id);
+const readClient = createClient({ chain: studionet });
+let usingLocalKey = false;
+let writeClient = null, myAddr = null, selected = null, disputes = [];
+
+// ------------------------------------------------------------------------ helpers
+const short = (a) => (a ? a.slice(0, 8) + "…" + a.slice(-6) : "—");
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
+  ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const eth = (wei) => {
+  const v = BigInt(wei ?? 0);
+  const whole = v / 10n ** 18n, frac = (v % 10n ** 18n).toString().padStart(18, "0");
+  const trimmed = frac.replace(/0+$/, "");
+  return trimmed ? `${whole}.${trimmed.slice(0, 6)}` : `${whole}`;
+};
+const gen = (g) => {
+  const s = String(g ?? "").trim();
+  if (!s) return 0n;
+  const [w, f = ""] = s.split(".");
+  if (!/^\d*$/.test(w) || !/^\d*$/.test(f)) throw new Error("Amount must be a number like 0.5");
+  return BigInt(w || "0") * 10n ** 18n + BigInt((f + "0".repeat(18)).slice(0, 18) || "0");
+};
+function msg(el, text, cls = "") {
+  if (!el) return;
+  el.textContent = text;
+  el.className = "msg" + (cls ? " " + cls : "");
+}
+function walletErr(e) {
+  const c = e && (e.code !== undefined ? e.code : (e.cause && e.cause.code));
+  if (c === 4001) return "You rejected the request in your wallet.";
+  if (c === -32002) return "A wallet request is already pending — open your wallet and confirm it.";
+  if (c === 4902) return "Studionet is not configured in your wallet.";
+  if (c === 4100) return "Wallet says this account/method is not authorised (4100). Reconnect, and make sure the active account holds GEN.";
+  const base = (e && (e.message || String(e))) || "Unknown wallet error";
+  return (c !== undefined && c !== null ? `[${c}] ` : "") + base;
+}
+
+// ------------------------------------------------------------------------ wallet
+$("connectBtn").addEventListener("click", async () => {
+  // Pin whichever EIP-1193 wallet is present. With several extensions installed the SDK's own
+  // `config.provider || window.ethereum` fallback can land on the wrong one and answer 4100.
+  const cands = [
+    { name: "OKX Wallet", p: window.okxwallet },
+    { name: "MetaMask", p: window.ethereum && window.ethereum.isMetaMask ? window.ethereum : null },
+    { name: "Rabby", p: window.ethereum && window.ethereum.isRabby ? window.ethereum : null },
+    { name: "injected", p: window.ethereum },
+  ];
+  const found = cands.find((c) => c.p && c.p.request);
+  if (!found) {
+    msg($("detailMsg"), "No wallet found. Install OKX Wallet or MetaMask, and open this page over https — wallets do not inject into file:// pages.", "err");
+    return;
+  }
+  const prov = found.p;
+  $("connectBtn").textContent = "Connecting…";
+  try {
+    const a = await prov.request({ method: "eth_requestAccounts" });
+    if (!a || !a.length) throw new Error("Your wallet returned no account.");
+    myAddr = a[0];
+    try {
+      await prov.request({ method: "wallet_switchEthereumChain", params: [{ chainId: "0xf22f" }] });
+    } catch (e) {
+      if (e && e.code === 4902) {
+        await prov.request({ method: "wallet_addEthereumChain", params: [{
+          chainId: "0xf22f", chainName: "GenLayer Studio",
+          nativeCurrency: { name: "GEN", symbol: "GEN", decimals: 18 },
+          rpcUrls: ["https://studio.genlayer.com/api"],
+          blockExplorerUrls: ["https://explorer-studio.genlayer.com"],
+        }] });
+      } else { throw e; }
+    }
+    const cid = await prov.request({ method: "eth_chainId" });
+    if (cid !== "0xf22f") {
+      msg($("detailMsg"), `Wallet is on chain ${parseInt(cid, 16)} but this app needs Studionet (61999). Switch it in the wallet and connect again.`, "err");
+      $("connectBtn").textContent = "Connect wallet";
+      return;
+    }
+    const forced = { request: (args) => prov.request(args) };
+    if (prov.on) forced.on = (...x) => prov.on(...x);
+    if (prov.removeListener) forced.removeListener = (...x) => prov.removeListener(...x);
+
+    usingLocalKey = false;
+    writeClient = createClient({ chain: studionet, provider: forced });
+    // Gas estimation throws on calls expected to revert and the SDK then starves them.
+    writeClient.estimateTransactionGas = async () => 3_000_000n;
+
+    $("netLabel").textContent = short(myAddr);
+    $("netDot").classList.add("on");
+    $("connectBtn").textContent = "Connected";
+
+    let bal = "";
+    try {
+      const raw = await readClient.getBalance({ address: myAddr });
+      if (raw !== null && raw !== undefined) bal = " · " + (Number(raw) / 1e18).toFixed(4) + " GEN";
+    } catch (e) { /* ignore */ }
+    msg($("detailMsg"), found.name + " connected on Studionet · " + short(myAddr) + bal, "ok");
+
+    if (prov.on) {
+      prov.on("accountsChanged", (accs) => {
+        myAddr = accs && accs.length ? accs[0] : null;
+        writeClient = null;
+        $("connectBtn").textContent = myAddr ? "Connected" : "Connect wallet";
+        $("netLabel").textContent = myAddr ? short(myAddr) : "not connected";
+        if (!myAddr) $("netDot").classList.remove("on");
+      });
+      prov.on("chainChanged", () => window.location.reload());
+    }
+    await loadAll();
+  } catch (e) {
+    $("connectBtn").textContent = "Connect wallet";
+    msg($("detailMsg"), "Connect failed: " + walletErr(e), "err");
+  }
+});
+
+// ------------------------------------------------------------------------ writes
+async function waitFinal(hash, el, label) {
+  for (let i = 0; i < 80; i++) {
+    await new Promise((r) => setTimeout(r, 15000));
+    let tx = null;
+    try { tx = await readClient.getTransaction({ hash }); } catch (e) { continue; }
+    if (!tx) continue;
+    const st = String(tx.statusName || tx.status || "");
+    if (st === "FINALIZED" || st === "ACCEPTED") {
+      const res = String(tx.txExecutionResultName || "");
+      if (res === "FINISHED_WITH_RETURN") {
+        msg(el, `${label} confirmed · ${short(hash)}`, "ok");
+        await loadAll();
+        return true;
+      }
+      msg(el, `${label} executed but returned ${res || "an error"} · ${short(hash)} — the contract refused it.`, "err");
+      return false;
+    }
+    if (st === "UNDETERMINED" || st === "LEADER_TIMEOUT") {
+      msg(el, `${label} could not reach consensus. It may still land — check the explorer. ${short(hash)}`, "err");
+      return false;
+    }
+  }
+  msg(el, `${label} is taking long. Hash ${short(hash)} — check the explorer before retrying.`, "info");
+  return false;
+}
+
+async function write(fn, args, el, label, value = 0n) {
+  if (!writeClient) return msg(el, "Connect your wallet first.", "err");
+  try {
+    msg(el, `${label} → confirm in your wallet…`, "info");
+    const call = { address: ADDR, functionName: fn, args, value };
+    if (!usingLocalKey && myAddr) call.account = { address: myAddr, type: "json-rpc" };
+    const hash = await writeClient.writeContract(call);
+    msg(el, `${label} submitted (${short(hash)}) — waiting for finalization…`, "info");
+    await waitFinal(hash, el, label);
+  } catch (e) {
+    msg(el, `${label} failed: ` + walletErr(e).slice(0, 240), "err");
+  }
+}
+
+// ------------------------------------------------------------------------ reads
+async function loadAll() {
+  try {
+    const n = Number(await readClient.readContract({ address: ADDR, functionName: "get_dispute_count", args: [] }));
+    disputes = [];
+    for (let i = 1; i <= n; i++) {
+      try { disputes.push(await readClient.readContract({ address: ADDR, functionName: "get_dispute", args: [BigInt(i)] })); }
+      catch (e) { /* skip */ }
+    }
+    renderList();
+    $("countLabel").textContent = `· ${n} on file`;
+  } catch (e) {
+    $("countLabel").textContent = "· read failed";
+  }
+}
+
+function renderList() {
+  const el = $("list");
+  if (!disputes.length) {
+    el.innerHTML = '<div class="item" style="cursor:default;color:var(--dim)">No disputes yet.</div>';
+    return;
+  }
+  el.innerHTML = disputes.map((d) => {
+    const st = Number(d.state);
+    return `
+    <div class="item${selected === String(d.id) ? " sel" : ""}" data-id="${esc(d.id)}">
+      <div style="min-width:0">
+        <div style="font-size:13.5px">#${esc(d.id)} · ${eth(d.escrowed)} GEN</div>
+        <div style="font-size:11.5px;color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(d.description)}</div>
+      </div>
+      <span class="badge b${st}">${DSTATE[st] ?? st}${d.settled ? " · PAID" : ""}</span>
+    </div>`;
+  }).join("");
+  el.querySelectorAll(".item[data-id]").forEach((n) =>
+    n.addEventListener("click", () => openDispute(n.dataset.id)));
+}
+
+async function openDispute(id) {
+  selected = String(id);
+  renderList();
+  const el = $("detail");
+  el.className = "kv";
+  try {
+    const d = await readClient.readContract({ address: ADDR, functionName: "get_dispute", args: [BigInt(id)] });
+    const st = Number(d.state);
+    el.innerHTML = `
+      <b>dispute</b><span>#${esc(d.id)}</span>
+      <b>state</b><span>${DSTATE[st] ?? st}${d.settled ? " · escrow paid out" : ""}</span>
+      <b>buyer</b><span>${esc(d.buyer)}</span>
+      <b>seller</b><span>${esc(d.seller)}</span>
+      <b>escrowed</b><span>${eth(d.escrowed)} GEN</span>
+      <b>evidence</b><span>buyer ${esc(d.buyer_ev_count)} · seller ${esc(d.seller_ev_count)}</span>
+      <b>winner</b><span>${esc(d.winner) || "—"}</span>
+      <b>split</b><span>${esc(d.split_percent)}% to buyer</span>
+      <b>confidence</b><span>${esc(d.ruling_confidence) || "—"}</span>
+      <b>reason</b><span>${esc(d.ruling_reason) || "—"}</span>`;
+    $("acceptBtn").disabled = st !== 0;
+    $("judgeBtn").disabled = st !== 1;
+    $("settleBtn").disabled = st !== 2 || Boolean(d.settled);
+    $("refundBtn").disabled = st !== 0;
+  } catch (e) {
+    el.className = "hint";
+    el.textContent = "Could not read dispute " + id + ": " + walletErr(e);
+  }
+}
+
+// ------------------------------------------------------------------------ handlers
+$("refreshBtn").addEventListener("click", loadAll);
+$("openBtn").addEventListener("click", () => openDispute($("openId").value.trim() || "1"));
+
+$("createBtn").addEventListener("click", () => {
+  let v; try { v = gen($("escrow").value); } catch (e) { return msg($("createMsg"), e.message, "err"); }
+  const seller = $("sellerAddr").value.trim();
+  if (!/^0x[0-9a-fA-F]{40}$/.test(seller)) return msg($("createMsg"), "Enter the seller's 0x address.", "err");
+  if (myAddr && seller.toLowerCase() === myAddr.toLowerCase())
+    return msg($("createMsg"), "Buyer and seller must differ.", "err");
+  if (v <= 0n) return msg($("createMsg"), "The escrow must be funded.", "err");
+  write("create_dispute", [seller, $("desc").value.trim()], $("createMsg"), "create_dispute", v);
+});
+
+$("acceptBtn").addEventListener("click", () => {
+  if (!selected) return msg($("detailMsg"), "Pick a dispute first.", "err");
+  write("accept_dispute", [BigInt(selected)], $("detailMsg"), "accept_dispute");
+});
+$("judgeBtn").addEventListener("click", () => {
+  if (!selected) return msg($("detailMsg"), "Pick a dispute first.", "err");
+  write("request_ruling", [BigInt(selected)], $("detailMsg"), "request_ruling");
+});
+$("settleBtn").addEventListener("click", () => {
+  if (!selected) return msg($("detailMsg"), "Pick a dispute first.", "err");
+  write("settle", [BigInt(selected)], $("detailMsg"), "settle");
+});
+$("refundBtn").addEventListener("click", () => {
+  if (!selected) return msg($("detailMsg"), "Pick a dispute first.", "err");
+  write("refund_if_unaccepted", [BigInt(selected)], $("detailMsg"), "refund_if_unaccepted");
+});
+$("evBtn").addEventListener("click", () => {
+  if (!selected) return msg($("evMsg"), "Open a dispute first so the evidence knows where to go.", "err");
+  const url = $("evUrl").value.trim();
+  const desc = $("evDesc").value.trim();
+  if (!/^https?:\/\//.test(url)) return msg($("evMsg"), "Evidence needs an http(s) URL.", "err");
+  if (!desc) return msg($("evMsg"), "Describe what the evidence shows.", "err");
+  write("submit_evidence", [BigInt(selected), url, desc], $("evMsg"), "submit_evidence");
+});
+
+// ------------------------------------------------------------------------ boot
+$("explorerLink").href = EXPLORER;
+$("addrLabel").textContent = short(ADDR);
+loadAll();
+</script>
+</body>
+</html>
